@@ -1,0 +1,71 @@
+---
+title: 'DATA-612, Project 3'
+subtitle: 'Summer, 2019'
+author: 'Fernando Figueres Zeledon'
+output: html_notebook
+---
+
+Singular Value Decomposition (SVD) is a valuable tool in the context of recommendation engines since it allows us to uncover latent features in a ratings matrix which are generated from the collective behavior of users. Additionally, we can quantify the relative strength of these features and create approximations with only a subset. This dimensional reduction operation can reduce the problem of overfitting, leading to more robust and compact representations of the data.
+
+In this project, we'll exemplify the utility of SVD by first decomposing a ratings matrix and later creating approximations using different singular values. By comparing the RMSE of the approximations vs the original matrix, we'll see how the number of singular values affects the error.
+
+```{r message=FALSE, warning=FALSE}
+library(recommenderlab)
+library(tidyverse)
+```
+
+
+As a first step, we'll create a hypothetical ratings matrix, consisting of 5 items and 5 users.
+
+```{r}
+set.seed(1)
+sample_m <- matrix(sample(1:20,20),5,5)
+sample_m
+```
+
+We can now decompose the matrix. We see that the values of the diagonal matrix sigma (here `d`) are ranked and vary widely. This magnitude represents the strength of each latent feature and will serve as a guide to determine which could be removed.
+
+```{r}
+sample_m.svd <- svd(sample_m)
+sample_m.svd
+```
+
+If we were to obtain the dot product of u,d and v' we could reconstruct the original matrix precisely but this wouldn't be very helpful. Instead, we can limit or reconstruction the largest n values in sigma (`d`). In this first example, we'll use only the first two terms.
+
+```{r}
+ds <- diag(sample_m.svd$d[1:2])
+us <- as.matrix(sample_m.svd$u[, 1:2])
+vs <- as.matrix(sample_m.svd$v[, 1:2])
+sample_m.1 <- us %*% ds %*% t(vs)
+sample_m.1
+```
+
+Eventhough we are using only two features to reconstruct the data, we can see that the values are very similar similar. If we instead use the 3 largest singular values, the values appriximate the original matrix even closer.
+
+```{r}
+ds <- diag(sample_m.svd$d[1:3])
+us <- as.matrix(sample_m.svd$u[, 1:3])
+vs <- as.matrix(sample_m.svd$v[, 1:3])
+sample_m.2 <- us %*% ds %*% t(vs)
+sample_m.2
+```
+
+As we expect, the RMSE decreases as we add more features and would decrease to 0 if we were to include all of them, effectively reconstrucitng the origiinal matrix.
+
+```{r}
+RMSE(sample_m, sample_m.1)
+RMSE(sample_m, sample_m.2)
+```
+ 
+More importantly, we see that SVD allows us to uncover latent features from the data. We can measure their relative strength and reconstruct the ratings only using those with the most predictive power. 
+
+Deciding how many features to keep will depend on the particular application but a rule of thumb is to conserve about 90% of the energy in sigma. That is, the sum of the squares in the retained sigma values should be about 90% of the total sum of squares (Leskovec, Rajaraman, & Ullman, 2014).
+
+
+**References**
+
+Gorakala, S. K., & Usuelli, M. (2015). Building a recommendation system with R. Retrieved from https://learning.oreilly.com/library/view/building-a-recommendation/9781783554492/
+
+Leskovec, J., Rajaraman, A., & Ullman, J. D. (2014). Mining of Massive Datasets. https://doi.org/10.1017/CBO9781139924801
+
+Koren, Y., Bell, R., & Volinsky, C. (2009). Matrix Factorization Techniques for Recommender Systems. Computer, 42(8), 30–37. https://doi.org/10.1109/MC.2009.263
